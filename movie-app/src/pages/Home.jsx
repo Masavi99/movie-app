@@ -1,45 +1,46 @@
-import { useState } from "react";
 import MovieCard from "../components/MovieCard";
-import "../css/Home.css"
-function Home() {
-    const[searchQuery,setSearchQuery]=useState("");
+import { useState, useEffect } from "react";
+import { searchMovies, getPopularMovies } from "../services/api";
+import "../css/Home.css";
 
-  const movies = [
-    {
-      id: 1,
-      title: "The Shawshank Redemption",
-      releaseYear: 1994,
-      url: "https://m.media-amazon.com/images/I/51NiGlapXlL._AC_.jpg",
-    },
-    {
-      id: 2,
-      title: "The Godfather",
-      releaseYear: 1972,
-      url: "https://m.media-amazon.com/images/I/41+eK8zBwQL._AC_.jpg",
-    },
-    {
-      id: 3,
-      title: "The Dark Knight",
-      releaseYear: 2008,
-      url: "https://m.media-amazon.com/images/I/51EbJjlLJGL._AC_.jpg",
-    },
-    {
-      id: 4,
-      title: "Pulp Fiction",
-      releaseYear: 1994,
-      url: "https://m.media-amazon.com/images/I/51V5ZpFyaFL._AC_.jpg",
-    },
-    {
-      id: 5,
-      title: "Forrest Gump",
-      releaseYear: 1994,
-      url: "https://m.media-amazon.com/images/I/41c9r0YHnQL._AC_.jpg",
-    },
-  ];
-  const handleSearch = (e) => {
-    e.preventDefault()
-    alert(searchQuery)
-    setSearchQuery("")
+function Home() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [movies, setMovies] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPopularMovies = async () => {
+      try {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies);
+      } catch (err) {
+        console.log(err);
+        setError("Failed to load movies...");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPopularMovies();
+  }, []);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return
+    if (loading) return
+
+    setLoading(true)
+    try {
+        const searchResults = await searchMovies(searchQuery)
+        setMovies(searchResults)
+        setError(null)
+    } catch (err) {
+        console.log(err)
+        setError("Failed to search movies...")
+    } finally {
+        setLoading(false)
+    }
   };
 
   return (
@@ -47,19 +48,29 @@ function Home() {
       <form onSubmit={handleSearch} className="search-form">
         <input
           type="text"
-          placeholder="Search movies..."
+          placeholder="Search for movies..."
           className="search-input"
           value={searchQuery}
-          onChange={(e)=>setSearchQuery(e.target.value)}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <button type="submit"className="search-button">Search</button>
+        <button type="submit" className="search-button">
+          Search
+        </button>
       </form>
-      <div className="movies-grid">
-        {movies.map((movie) => (
-          movie.title.toLowerCase().startsWith(searchQuery) && <MovieCard movie={movie} key={movie.id} />
-        ))}
-      </div>
+
+        {error && <div className="error-message">{error}</div>}
+
+      {loading ? (
+        <div className="loading">Loading...</div>
+      ) : (
+        <div className="movies-grid">
+          {movies.map((movie) => (
+            <MovieCard movie={movie} key={movie.id} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+
 export default Home;
